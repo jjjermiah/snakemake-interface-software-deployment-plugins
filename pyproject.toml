@@ -1,30 +1,70 @@
-[tool.poetry]
-authors = ["Johannes Köster <johannes.koester@uni-due.de>"]
-description = "This package provides a stable interface for interactions between Snakemake and its software deployment plugins."
-license = "MIT"
+[project]
 name = "snakemake-interface-software-deployment-plugins"
-packages = [{include = "snakemake_interface_software_deployment_plugins"}]
-readme = "README.md"
 version = "0.6.1"
+description = "This package provides a stable interface for interactions between Snakemake and its software deployment plugins."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Johannes Köster", email = "johannes.koester@uni-due.de" }]
+requires-python = ">=3.11"
+dependencies = [
+  "argparse-dataclass>=2.0.0",
+  "snakemake-interface-common>=1.17.4",
+]
 
-[tool.poetry.dependencies]
-argparse-dataclass = "^2.0.0"
-python = "^3.11"
-snakemake-interface-common = "^1.17.4"
 
-[tool.poetry.group.dev.dependencies]
-coverage = {extras = ["toml"], version = "^6.3.1"}
-flake8-bugbear = "^22.1.11"
-pytest = "^7.0"
-ruff = "^0.9.9"
-snakemake-software-deployment-plugin-envmodules = "^0.1.2"
-
-[tool.coverage.run]
-omit = [".*", "*/site-packages/*"]
-
-[tool.coverage.report]
-fail_under = 63
 
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["snakemake_interface_software_deployment_plugins"]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64"]
+
+[tool.pixi.environments]
+dev = { features = ["dev"] }
+publish = { features = ["publish"] }
+
+[tool.pixi.feature.dev.dependencies]
+pytest = ">=8.3.5,<9"
+ruff = ">=0.10.0,<0.11"
+mypy = ">=1.15.0,<2"
+pytest-cov = ">=6.0.0,<7"
+
+[tool.pixi.feature.dev.pypi-dependencies]
+snakemake-interface-software-deployment-plugins = { path = ".", editable = true }
+snakemake-software-deployment-plugin-envmodules = { git = "https://github.com/snakemake/snakemake-software-deployment-plugin-envmodules.git" }
+
+[tool.pixi.feature.dev.tasks.test]
+cmd = [
+  "pytest",
+  "--cov=snakemake_interface_software_deployment_plugins",
+  "--cov-report=xml:coverage-report/coverage.xml",
+  "--cov-report=term-missing",
+  "tests/tests.py"
+]
+description = "Run tests and generate coverage report"
+
+[tool.coverage.report]
+omit = ["**/tests.py"]
+# fail_under = 63
+
+[tool.pixi.feature.dev.tasks]
+format = "ruff format snakemake_interface_software_deployment_plugins"
+lint = "ruff check"
+type-check = "mypy snakemake_interface_software_deployment_plugins/"
+qc = { depends-on = ["format", "lint", "type-check"] }
+
+# Publish
+[tool.pixi.feature.publish.dependencies]
+twine = ">=6.1.0,<7"
+python-build = ">=1.2.2,<2"
+
+[tool.pixi.feature.publish.tasks]
+build = { cmd = "python -m build", description = "Build the package into the dist/ directory" }
+check-build = { cmd = "python -m twine check dist/*", depends-on = [
+  "build",
+], description = "Check that the package can be uploaded" }
